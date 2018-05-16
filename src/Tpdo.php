@@ -58,26 +58,51 @@ class Tpdo extends PDO
             return array($query, $unkeyed_params);
         }
 
-        $q_searches = array();
-        $q_replacements = array();
-        foreach ($matches as $idx => $match) {
+        /**
+         * Code below changes the query text
+         * Reverse the matches being considered here, to avoid changing the offsets
+         * found by the regex above
+         */
+        $matches = array_reverse($matches);
+        $param_idx = count($unkeyed_params);
+
+        foreach ($matches as $match) {
             list ($pattern, $offset) = $match;
+
+            if ($this->offsetInsideQuotes($query, $offset)) {
+                continue;
+            }
+
+            $param_idx -= 1;
 
             if ($pattern == '?') {
                 continue;
             }
 
-            if (!is_array($unkeyed_params[$idx])) {
+            if (!is_array($unkeyed_params[$param_idx])) {
                 throw new Exception('Found [?] in query, but parameter is not an array');
             }
 
-            $q_searches[] = '[?]';
-            $q_replacements[] = implode(', ', array_fill(0, count($unkeyed_params[$idx]), '?'));
-            array_splice($unkeyed_params, $idx, 1, $unkeyed_params[$idx]);
+            $query = $this->spliceParams($query, $offset, count($unkeyed_params[$param_idx]));
+
+            array_splice($unkeyed_params, $param_idx, 1, $unkeyed_params[$param_idx]);
         }
 
-        $expanded_query = str_replace($q_searches, $q_replacements, $query);
+        return array($query, $unkeyed_params);
+    }
 
-        return array($expanded_query, $unkeyed_params);
+    private function offsetInsideQuotes($query, $offset)
+    {
+        $unused_matches = array();
+        $preceeding_quotes = preg_match_all('/[^\\\]"/', substr($query, 0, $offset), $unused_matches);
+
+        return $preceeding_quotes === false || $preceeding_quotes % 2 == 1;
+    }
+
+    private function spliceParams($query, $offset, $count)
+    {
+        $param_statement = implode(', ', array_fill(0, $count, '?'));
+
+        return substr($query, 0, $offset) . ' ' . $param_statement . ' ' . substr($query, $offset + 3);
     }
 }

@@ -46,6 +46,21 @@ class TpdoTest extends TestCase
         $db->run('select * from test where val = [?]', array('not an array'));
     }
 
+    public function testArrayTokenIgnoredInQuotedValue()
+    {
+        $db = $this->getTpdo();
+        $this->resetDb($db);
+        $db->run('insert into test (val) values (?)', array('[?]'));
+
+        $res = $db->run(
+            'select * from test where val = "du\\"mmy" or val = ? or val = "[?]"',
+            array('other dummy')
+        );
+
+        $this->assertEquals((object) array('val' => '[?]'), $res->fetch());
+        $this->assertFalse($res->fetch());
+    }
+
     private function getTpdo()
     {
         require_once __DIR__ . '/../src/Tpdo.php';
@@ -65,6 +80,6 @@ class TpdoTest extends TestCase
     private function resetDb(Tpdo $db)
     {
         $db->run('drop table if exists test');
-        $db->run('create table test (val int default null)');
+        $db->run('create table test (val varchar(255) default null)');
     }
 }
