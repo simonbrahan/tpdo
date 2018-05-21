@@ -6,7 +6,7 @@ use PDO;
 class Tpdo extends PDO
 {
     /**
-     * Run a query on the database. Does not currently support named parameters.
+     * Run a query on the database.
      *
      * Equivalent to:
      * $stmnt = $pdo->prepare($query);
@@ -37,7 +37,9 @@ class Tpdo extends PDO
     public function run($query, $params = array())
     {
         if (!$this->usingNamedParams($params)) {
-            list($query, $params) = $this->expandArrayParams($query, $params);
+            list($query, $params) = $this->expandIndexedArrayParams($query, $params);
+        } else {
+            list($query, $params) = $this->expandNamedParams($query, $params);
         }
 
         $q = parent::prepare($query);
@@ -52,7 +54,32 @@ class Tpdo extends PDO
         return array_keys($params) != range(0, count($params) - 1);
     }
 
-    private function expandArrayParams($query, $params)
+    private function expandNamedParams($query, $params)
+    {
+        foreach ($params as $key => $val) {
+            if (!is_array($val)) {
+                continue;
+            }
+
+            $val_keys = array();
+            foreach ($val as $item) {
+                do {
+                    $val_key = $key . uniqid();
+                } while (isset($params[$val_key]));
+
+                $params[$val_key] = $item;
+                $val_keys[] = $val_key;
+            }
+
+            unset($params[$key]);
+
+            $query = str_replace('[' . $key . ']', implode(', ', $val_keys), $query);
+        }
+
+        return array($query, $params);
+    }
+
+    private function expandIndexedArrayParams($query, $params)
     {
         $unkeyed_params = array_values($params);
 
