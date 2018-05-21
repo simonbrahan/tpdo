@@ -61,6 +61,22 @@ class TpdoTest extends TestCase
         $this->assertFalse($res->fetch());
     }
 
+    public function testSupportsNamedParameters()
+    {
+        $db = $this->getTpdo();
+        $this->resetDb($db);
+        $db->run('insert into test (val) values (?), (?)', array('val1', 'val2'));
+
+        $res = $db->run(
+            'select * from test where val in (:val1, :val2) order by val',
+            array(':val1' => 'val1', ':val2' => 'val2')
+        );
+
+        $this->assertEquals((object) array('val' => 'val1'), $res->fetch());
+        $this->assertEquals((object) array('val' => 'val2'), $res->fetch());
+        $this->assertFalse($res->fetch());
+    }
+
     private function getTpdo()
     {
         require_once __DIR__ . '/../src/Tpdo.php';

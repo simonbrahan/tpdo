@@ -36,13 +36,20 @@ class Tpdo extends PDO
      */
     public function run($query, $params = array())
     {
-        list($query, $params) = $this->expandArrayParams($query, $params);
+        if (!$this->usingNamedParams($params)) {
+            list($query, $params) = $this->expandArrayParams($query, $params);
+        }
 
         $q = parent::prepare($query);
 
         $res = $q->execute($params);
 
         return $q;
+    }
+
+    private function usingNamedParams($params)
+    {
+        return array_keys($params) != range(0, count($params) - 1);
     }
 
     private function expandArrayParams($query, $params)
