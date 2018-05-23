@@ -93,6 +93,28 @@ class TpdoTest extends TestCase
         $this->assertFalse($res->fetch());
     }
 
+    public function testNamedArrayTokenIgnoredInQuotedValue()
+    {
+        $db = $this->getTpdo();
+        $this->resetDb($db);
+        $db->run(
+            'insert into test (val) values (?), (?), (?)',
+            array('some val', 'other val', 'third val')
+        );
+
+        $db->show_debug = true;
+
+        $res = $db->run(
+            'select * from test where val = "[:p1]" or val in ([:p1]) or val = :p2 order by val asc',
+            array(':p1' => array('some val', 'other val'), ':p2' => 'third val')
+        );
+
+        $this->assertEquals((object) array('val' => 'other val'), $res->fetch());
+        $this->assertEquals((object) array('val' => 'some val'), $res->fetch());
+        $this->assertEquals((object) array('val' => 'third val'), $res->fetch());
+        $this->assertFalse($res->fetch());
+    }
+
     private function getTpdo()
     {
         require_once __DIR__ . '/../src/Tpdo.php';

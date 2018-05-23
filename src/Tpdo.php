@@ -56,24 +56,55 @@ class Tpdo extends PDO
 
     private function expandNamedParams($query, $params)
     {
-        foreach ($params as $key => $val) {
-            if (!is_array($val)) {
+        $matches = array();
+        preg_match_all('/\[?:\w+\]?/', $query, $matches, PREG_OFFSET_CAPTURE);
+
+        $matches = reset($matches);
+
+        if (empty($matches)) {
+            return array($query, $params);
+        }
+
+        /**
+         * Code below changes the query text
+         * Reverse the matches being considered here, to avoid changing the offsets
+         * found by the regex above
+         */
+        $matches = array_reverse($matches);
+        foreach ($matches as $match) {
+            list ($pattern, $offset) = $match;
+
+            if ($this->offsetInsideQuotes($query, $offset)) {
                 continue;
             }
 
+            if (strpos($pattern, '[') !== 0) {
+                continue;
+            }
+
+            $param_name = trim($pattern, '[]');
+
+            if (!is_array($params[$param_name])) {
+                throw new Exception('Found ' . $pattern . ' in query, but parameter is not an array');
+            }
+
             $val_keys = array();
-            foreach ($val as $item) {
+            foreach ($params[$param_name] as $item) {
                 do {
-                    $val_key = $key . uniqid();
+                    $val_key = $param_name . uniqid();
                 } while (isset($params[$val_key]));
 
                 $params[$val_key] = $item;
                 $val_keys[] = $val_key;
             }
 
-            unset($params[$key]);
+            $param_statement = implode(', ', $val_keys);
 
-            $query = str_replace('[' . $key . ']', implode(', ', $val_keys), $query);
+            $query = substr($query, 0, $offset) . ' ' .
+                     $param_statement . ' ' .
+                     substr($query, $offset + strlen($pattern));
+
+            unset($params[$param_name]);
         }
 
         return array($query, $params);
