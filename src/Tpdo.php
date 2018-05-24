@@ -51,7 +51,7 @@ class Tpdo extends PDO
 
     private function usingNamedParams($params)
     {
-        return array_keys($params) != range(0, count($params) - 1);
+        return array_keys($params) !== range(0, count($params) - 1);
     }
 
     private function expandNamedParams($query, $params)

@@ -113,6 +113,18 @@ class TpdoTest extends TestCase
         $this->assertFalse($res->fetch());
     }
 
+    public function testCannotExpandSingleNamedParameter()
+    {
+        $db = $this->getTpdo();
+
+        $this->setExpectedException(
+            'Tpdo\Exception',
+            'Found [:p1] in query, but parameter is not an array'
+        );
+
+        $db->run('select * from test where val = [:p1]', array(':p1' => 'some string'));
+    }
+
     private function getTpdo()
     {
         require_once __DIR__ . '/../src/Tpdo.php';
