@@ -61,6 +61,18 @@ class TpdoTest extends TestCase
         $this->assertFalse($res->fetch());
     }
 
+    public function testQueryWithNoParameters()
+    {
+        $db = $this->getTpdo();
+        $this->resetDb($db);
+        $db->run('insert into test (val) values (?)', array('1'));
+
+        $res = $db->run('select * from test');
+
+        $this->assertEquals((object) array('val' => '1'), $res->fetch());
+        $this->assertFalse($res->fetch());
+    }
+
     public function testSupportsNamedParameters()
     {
         $db = $this->getTpdo();
